@@ -1,0 +1,652 @@
+{
+  "name": "NOAVIA - Client Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "client-onboarding",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a4509e60-b4b6-4818-a6fe-97aea1bf8cee",
+      "name": "Webhook",
+      "webhookId": "5cd800f9-65f2-4ac5-ac09-cddc8d8fb287"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Node: Validate & Normalize Client Intake\n * Purpose: Validate incoming webhook payload and normalize schema\n */\n\nconst item = $input.first();\nconst payloadBody = item?.json.body || {};\n\nconst errors = [];\nconst now = new Date().toISOString();\n\nconst normalizeString = (value) =>\n  typeof value === 'string' ? value.trim() : '';\n\nconst isValidEmail = (email) =>\n  /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n\nconst isValidUrl = (url) => {\n  const urlRegex = /^https?:\\/\\/[^\\s/$.?#].[^\\s]*$/i;\n  return urlRegex.test(url);\n};\n\n\nconst companyName = normalizeString(payloadBody.companyName);\nconst firstName = normalizeString(payloadBody.firstName);\nconst lastName = normalizeString(payloadBody.lastName);\nconst email = normalizeString(payloadBody.email).toLowerCase();\nconst phone = normalizeString(payloadBody.phone);\nconst website = normalizeString(payloadBody.website);\nconst serviceTier = normalizeString(payloadBody.serviceTier);\nconst notes = normalizeString(payloadBody.notes);\n\nconst allowedTiers = new Set([\n  'Basic',\n  'Professional',\n  'Enterprise'\n]);\n\n\nif (!companyName) errors.push('companyName is required');\nif (!firstName) errors.push('firstName is required');\nif (!lastName) errors.push('lastName is required');\n\nif (!email || !isValidEmail(email)) {\n  errors.push('A valid email is required');\n}\n\nif (!website || !isValidUrl(website)) {\n  errors.push('A valid website URL is required');\n}\n\nif (!allowedTiers.has(serviceTier)) {\n  errors.push(\n    'serviceTier must be one of: Basic, Professional, Enterprise'\n  );\n}\n\n\nif (errors.length > 0) {\n  return [\n    {\n      json: {\n        success: false,\n        status: 'validation_failed',\n        errors,\n        timestamp: now\n      }\n    }\n  ];\n}\n\n\nreturn [\n  {\n    json: {\n      success: true,\n      source: 'webhook',\n      company_name: companyName,\n      contact_first_name: firstName,\n      contact_last_name: lastName,\n      contact_full_name: `${firstName} ${lastName}`,\n      email,\n      phone,\n      website,\n      service_tier: serviceTier,\n      notes,\n      status: 'validated',\n      created_at: now,\n      updated_at: now\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "101ef8ed-229a-45c2-9d73-77bb8b4ad65a",
+      "name": "Validate & Normalize Payload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item?.json || {};\n\nconst now = new Date();\nconst year = now.getFullYear();\nconst randomSequence = Math.floor(1000 + Math.random() * 9000);\n\nreturn [\n  {\n    json: {\n      ...data,\n      client_ref: `NOA-${year}-${randomSequence}`,\n      onboarding_date: now.toISOString().split('T')[0],\n      updated_at: now.toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4e000093-c826-4b58-913f-6dff0e04de2d",
+      "name": "Generate Client Reference"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hunter.io/v2/companies/find",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "domain",
+              "value": "={{$json.website.replace(\"https://\",\"\")}}"
+            },
+            {
+              "name": "api_key",
+              "value": "c3323469ea2b28e56e0b692ec3ca2ff1aafd92b1"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "1dbc58b6-3d80-49bc-806e-df75fde9e373",
+      "name": "Company Enrichment API"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first()?.json || {};\nconst prev = $('Generate Client Reference').first().json;\n\nconst statusCode = response.statusCode || null;\nconst body = response.body || {};\nconst company = body.data || null;\nconst apiErrors = body.errors || [];\n\n/**\n * Default fallback enrichment\n */\nlet enrichment = {\n  industry: 'Unknown',\n  company_size: 'medium',\n  location: 'Unknown',\n  logo: '',\n  enrichment_source: 'fallback',\n  enrichment_error: null\n};\n\n/**\n * Handle API error response\n */\nif (Array.isArray(apiErrors) && apiErrors.length > 0) {\n  enrichment.enrichment_error = apiErrors\n    .map(err => `${err.code || err.id}: ${err.details || 'Unknown error'}`)\n    .join('; ');\n}\n\n/**\n * Handle successful company enrichment response\n */\nif (company && typeof company === 'object') {\n  // Industry mapping\n  const industry =\n    company.category?.industry ||\n    company.category?.industryGroup ||\n    company.category?.sector ||\n    (Array.isArray(company.techCategories) && company.techCategories.length > 0\n      ? company.techCategories[0]\n      : 'Unknown');\n\n  // Company size mapping\n  let companySize = 'medium';\n  const employees = company.metrics?.employees;\n\n  if (typeof employees === 'number') {\n    if (employees < 50) {\n      companySize = 'small';\n    } else if (employees < 250) {\n      companySize = 'medium';\n    } else {\n      companySize = 'large';\n    }\n  }\n\n  // Location mapping\n  const location =\n    company.location ||\n    company.geo?.country ||\n    company.geo?.city ||\n    company.geo?.state ||\n    'Unknown';\n\n  enrichment = {\n    industry,\n    company_size: companySize,\n    location,\n    logo: company.logo || '',\n    enrichment_source: 'hunter-company-enrichment',\n    enrichment_error: null\n  };\n}\n\nreturn [\n  {\n    json: {\n      ...prev,\n      ...enrichment,\n      enrichment_status_code: statusCode,\n      enriched_domain: company?.domain || prev.domain || '',\n      enriched_company_name: company?.name || company?.legalName || prev.company_name,\n      status: 'enriched',\n      updated_at: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "6e065ee7-26be-43f3-bf89-ccbd27e9c3ce",
+      "name": "Normalize Enrichment"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst tierDescriptions = {\n  Basic: 'Basic onboarding with standard setup and essential support.',\n  Professional: 'Professional onboarding with guided setup, configuration support, and faster coordination.',\n  Enterprise: 'Enterprise onboarding with dedicated coordination, advanced planning, and stakeholder alignment.'\n};\n\nconst tierNextSteps = {\n  Basic: [\n    'Review welcome information',\n    'Confirm primary contact details',\n    'Start standard onboarding process'\n  ],\n  Professional: [\n    'Review welcome information',\n    'Confirm account and contact details',\n    'Schedule onboarding session',\n    'Prepare integration requirements'\n  ],\n  Enterprise: [\n    'Review welcome information',\n    'Confirm account and stakeholder contacts',\n    'Schedule discovery workshop',\n    'Review security and integration requirements',\n    'Assign onboarding owner'\n  ]\n};\n\nconst tier = data.service_tier || 'Basic';\nconst steps = tierNextSteps[tier] || tierNextSteps.Basic;\nconst description = tierDescriptions[tier] || tierDescriptions.Basic;\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Welcome - ${data.company_name}</title>\n  <style>\n    body {\n      font-family: Segoe UI, Arial, sans-serif;\n      max-width: 700px;\n      margin: 40px auto;\n      color: #1a1a2e;\n      line-height: 1.6;\n      padding: 0 24px;\n    }\n    .header {\n      background: #1a1a2e;\n      color: white;\n      padding: 32px;\n      border-radius: 12px 12px 0 0;\n    }\n    .content {\n      border: 1px solid #ddd;\n      border-top: none;\n      padding: 24px;\n      border-radius: 0 0 12px 12px;\n    }\n    .box {\n      background: #f8f9fa;\n      padding: 16px;\n      border-radius: 8px;\n      margin: 16px 0;\n    }\n    h1, h2 {\n      margin-top: 0;\n    }\n    ul {\n      padding-left: 20px;\n    }\n    .footer {\n      margin-top: 24px;\n      font-size: 12px;\n      color: #666;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>Welcome to NOAVIA</h1>\n    <p>Your onboarding has been prepared successfully.</p>\n  </div>\n\n  <div class=\"content\">\n    <div class=\"box\">\n      <p><strong>Client Reference:</strong> ${data.client_ref}</p>\n      <p><strong>Company Name:</strong> ${data.company_name}</p>\n      <p><strong>Contact Person:</strong> ${data.contact_full_name}</p>\n      <p><strong>Email:</strong> ${data.email}</p>\n      <p><strong>Phone:</strong> ${data.phone || 'N/A'}</p>\n      <p><strong>Website:</strong> ${data.website}</p>\n      <p><strong>Service Tier:</strong> ${data.service_tier}</p>\n      <p><strong>Onboarding Date:</strong> ${data.onboarding_date}</p>\n    </div>\n\n    <h2>Service Description</h2>\n    <p>${description}</p>\n\n    <h2>Next Steps</h2>\n    <ul>\n      ${steps.map(step => `<li>${step}</li>`).join('')}\n    </ul>\n\n    <h2>Enrichment Summary</h2>\n    <p><strong>Industry:</strong> ${data.industry || 'Unknown'}</p>\n    <p><strong>Company Size:</strong> ${data.company_size || 'Unknown'}</p>\n    <p><strong>Location:</strong> ${data.location || 'Unknown'}</p>\n\n    ${data.notes ? `<h2>Special Requirements</h2><p>${data.notes}</p>` : ''}\n\n    <div class=\"footer\">\n      NOAVIA GmbH · AI Automation Company · Berlin, Germany<br>\n      Auto-generated on ${data.onboarding_date} · Ref: ${data.client_ref}\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn {\n  json: {\n    ...data,\n    welcome_html: html,\n    doc_filename: `Welcome_${data.company_name.replace(/[^a-zA-Z0-9]/g, '_')}_${data.client_ref}.html`,\n    status: 'document-ready'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "d561a74f-2c74-4d2c-a243-c826c74f420b",
+      "name": "Generate Welcome Document"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1wvEbmrV8eP_5R-oHIzFrps0UiOwHz3FIM9ydFiNWVok",
+          "mode": "list",
+          "cachedResultName": "NOAVIA_Client_Onboarding",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wvEbmrV8eP_5R-oHIzFrps0UiOwHz3FIM9ydFiNWVok/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "clients",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wvEbmrV8eP_5R-oHIzFrps0UiOwHz3FIM9ydFiNWVok/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "client_ref": "={{ $json.client_ref }}",
+            "company_name": "={{$json.company_name}}",
+            "contact_full_name": "={{ $json.contact_full_name }}",
+            "email": "={{ $json.email }}",
+            "phone": "={{ $json.phone }}",
+            "website": "={{ $json.website }}",
+            "service_tier": "={{ $json.service_tier }}",
+            "industry": "={{ $json.industry }}",
+            "location": "={{ $json.location }}",
+            "erp_import_status": "={{ $json.erp_import.summary.imported_count + ' imported, ' + $json.erp_import.summary.skipped_count + ' skipped' }}",
+            "onboarding_date": "={{ $json.onboarding_date }}",
+            "doc_filename": "={{ $json.doc_filename }}",
+            "notes": "={{ $json.notes }}",
+            "status": "completed",
+            "company_size": "={{ $json.company_size }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "client_ref",
+              "displayName": "client_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "contact_full_name",
+              "displayName": "contact_full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "service_tier",
+              "displayName": "service_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company_size",
+              "displayName": "company_size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "erp_import_status",
+              "displayName": "erp_import_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "onboarding_date",
+              "displayName": "onboarding_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "doc_filename",
+              "displayName": "doc_filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "e112b721-64fe-47ac-8e4c-a8767469e9cb",
+      "name": "Save to Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "E2xJlpDMYXAt37gO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.service_tier }}",
+                    "rightValue": "Enterprise",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fd7d4c2c-a6a9-4beb-b703-84efc6178112"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Enterprise"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5c48efcf-4a40-49f5-972f-a3cd0d19a37f",
+                    "leftValue": "={{ $json.service_tier }}",
+                    "rightValue": "Professional",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Professional"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Basic"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "d091c125-f790-48de-9312-e76def416b96",
+      "name": "Route by Tier"
+    },
+    {
+      "parameters": {
+        "sendTo": "minhajcorporation5@gmail.com",
+        "subject": "=New {{$json.service_tier}} Client Onboarding | {{$json.company_name}} | {{$json.client_ref}}",
+        "message": "=<h2>New Client Onboarding Completed</h2>\n\n<p><strong>Reference:</strong> {{$json.client_ref}}</p>\n<p><strong>Company:</strong> {{$json.company_name}}</p>\n<p><strong>Contact:</strong> {{$json.contact_full_name}}</p>\n<p><strong>Email:</strong> {{$json.email}}</p>\n<p><strong>Phone:</strong> {{$json.phone}}</p>\n<p><strong>Website:</strong> {{$json.website}}</p>\n<p><strong>Tier:</strong> {{$json.service_tier}}</p>\n<p><strong>Industry:</strong> {{$json.industry}}</p>\n<p><strong>Company Size:</strong> {{$json.company_size}}</p>\n<p><strong>Location:</strong> {{$json.location}}</p>\n<p><strong>Onboarding Date:</strong> {{$json.onboarding_date}}</p>\n\n<p><strong>Notes:</strong></p>\n<p>{{$json.notes}}</p>\n\n<hr>\n\n<p>\nThis email was generated automatically by the NOAVIA Client Onboarding workflow.\n</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        -128
+      ],
+      "id": "72070d0d-9c94-4e99-81c4-e6beeabead30",
+      "name": "Enterprise Email",
+      "webhookId": "9ae13c37-f8b9-47d2-a075-adf082f82cf6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CG6DZDKpmDYFQ2YF",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "minhajcorporation5@gmail.com",
+        "subject": "=New {{$json.service_tier}} Client Onboarding | {{$json.company_name}} | {{$json.client_ref}}",
+        "message": "=<h2>New Client Onboarding Completed</h2>\n\n<p><strong>Reference:</strong> {{$json.client_ref}}</p>\n<p><strong>Company:</strong> {{$json.company_name}}</p>\n<p><strong>Contact:</strong> {{$json.contact_full_name}}</p>\n<p><strong>Email:</strong> {{$json.email}}</p>\n<p><strong>Phone:</strong> {{$json.phone}}</p>\n<p><strong>Website:</strong> {{$json.website}}</p>\n<p><strong>Tier:</strong> {{$json.service_tier}}</p>\n<p><strong>Industry:</strong> {{$json.industry}}</p>\n<p><strong>Company Size:</strong> {{$json.company_size}}</p>\n<p><strong>Location:</strong> {{$json.location}}</p>\n<p><strong>Onboarding Date:</strong> {{$json.onboarding_date}}</p>\n\n<p><strong>Notes:</strong></p>\n<p>{{$json.notes}}</p>\n\n<hr>\n\n<p>\nThis email was generated automatically by the NOAVIA Client Onboarding workflow.\n</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1952,
+        224
+      ],
+      "id": "4de369ea-256d-4253-ba1d-65b7720ae3b1",
+      "name": "Professional Email",
+      "webhookId": "b5cc5b46-623c-4280-b545-827346fb521d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CG6DZDKpmDYFQ2YF",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "760f2b97-eb9f-486d-a357-fbb00d2f1354",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ";"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        304
+      ],
+      "id": "54455bd8-2379-4483-b9f0-7c222498e64c",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/Users/hamzazahidbutt/.n8n-files/NOAVIA_Sample_ERP_Export_DATEV.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        304
+      ],
+      "id": "cb43e1f8-2789-4800-bb3f-e67c00e3cd61",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ERP CSV Import\n// Mode: Run Once for All Items\n\nconst sourceRows = $input.all().map(item => item.json);\n\n// German ERP headers -> internal schema\nconst fieldMap = {\n  'Kundennr': 'customer_number',\n  'Firma': 'company_name',\n  'Ansprechpartner': 'contact_person',\n  'E-Mail': 'erp_email',\n  'Telefon': 'erp_phone',\n  'Straße': 'street',\n  'PLZ': 'postal_code',\n  'Ort': 'city',\n  'Land': 'country',\n  'Branche': 'industry',\n  'Kundenseit': 'customer_since',\n  'Umsatz_2025': 'revenue_2025',\n  'Zahlungsziel': 'payment_terms',\n  'Bemerkung': 'notes'\n};\n\nconst imported = [];\nconst skipped = [];\nconst seenNumbers = new Set();\nconst seenCompanies = new Set();\n\nfor (let i = 0; i < sourceRows.length; i++) {\n  const raw = sourceRows[i] || {};\n\n  // Map German headers to internal schema\n  const record = {\n    erp_status: 'imported-from-erp'\n  };\n\n  for (const [de, en] of Object.entries(fieldMap)) {\n    const value = raw[de];\n    record[en] = value === undefined || value === null ? '' : String(value).trim();\n  }\n\n  // Normalize company name for duplicate detection\n  const normalizedCompanyName = (record.company_name || '').toLowerCase();\n\n  // Validation checks\n  if (!record.company_name) {\n    skipped.push({\n      row: i + 1,\n      kundennr: raw.Kundennr || 'N/A',\n      reason: 'missing company name (Firma leer)'\n    });\n    continue;\n  }\n\n  if (!record.customer_number) {\n    skipped.push({\n      row: i + 1,\n      company: record.company_name,\n      reason: 'missing customer number (Kundennr fehlt)'\n    });\n    continue;\n  }\n\n  if (seenNumbers.has(record.customer_number)) {\n    skipped.push({\n      row: i + 1,\n      kundennr: record.customer_number,\n      company: record.company_name,\n      reason: `duplicate Kundennr: ${record.customer_number}`\n    });\n    continue;\n  }\n\n  if (seenCompanies.has(normalizedCompanyName)) {\n    skipped.push({\n      row: i + 1,\n      kundennr: record.customer_number,\n      company: record.company_name,\n      reason: `duplicate company name: ${record.company_name}`\n    });\n    continue;\n  }\n\n  seenNumbers.add(record.customer_number);\n  seenCompanies.add(normalizedCompanyName);\n  imported.push(record);\n}\n\n// Return one summary object for downstream nodes\nreturn [\n  {\n    json: {\n      erp_import: {\n        imported,\n        skipped,\n        summary: {\n          total_rows: sourceRows.length,\n          imported_count: imported.length,\n          skipped_count: skipped.length\n        }\n      },\n      status: 'erp-processed'\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        304
+      ],
+      "id": "e2c3ae2d-f03c-4813-9772-fd3457ac7d5a",
+      "name": "ERP CSV Import"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Normalize Payload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Generate Client Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Client Reference": {
+      "main": [
+        [
+          {
+            "node": "Company Enrichment API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Enrichment API": {
+      "main": [
+        [
+          {
+            "node": "Normalize Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Welcome Document": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Route by Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tier": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Professional Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Generate Welcome Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "ERP CSV Import",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP CSV Import": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1f0f3fd4-9d07-4f68-8df4-5816531126fe",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "97432bf2e1d7c7892c36f26a6e70e340356dab15e21a8e282ea5997476067571"
+  },
+  "id": "iNbbYYZxOuSlPpk1",
+  "tags": []
+}
