@@ -1,0 +1,26 @@
+Kundennr;Firma;Ansprechpartner;E-Mail;Telefon;Straße;PLZ;Ort;Land;Branche;Kundenseit;Umsatz_2025;Zahlungsziel;Bemerkung
+10001;Müller Maschinenbau GmbH;Thomas Müller;mueller@maschinenbau-mueller.de;+49 711 123456;Industriestr. 42;70173;Stuttgart;DE;Maschinenbau;2019-03-15;245000;30 Tage;Stammkunde
+10002;Bäckerei Schneider KG;Anna Schneider;a.schneider@baeckerei-schneider.de;+49 89 654321;Hauptstr. 7;80331;München;DE;Lebensmittel;2021-07-01;18500;14 Tage;
+10003;Weber Elektrotechnik AG;Klaus Weber;k.weber@weber-elektro.de;+49 30 987654;Berliner Allee 15;10115;Berlin;DE;Elektrotechnik;2018-11-20;567000;45 Tage;Großkunde, Sonderkonditionen
+10004;Fischer Logistik GmbH & Co. KG;Sandra Fischer;fischer@fischer-logistik.com;+49 40 111222;Hafenstr. 88;20457;Hamburg;DE;Transport/Logistik;2020-01-10;189000;30 Tage;
+10005;Schmidt & Söhne Metallbau;Hans Schmidt;h.schmidt@schmidt-metallbau.de;+49 211 333444;Werkstr. 3;40210;Düsseldorf;DE;Metallverarbeitung;2017-05-22;312000;30 Tage;Zahlungsmoral: gut
+10006;König Kunststofftechnik GmbH;Petra König;p.koenig@koenig-kunststoff.de;+49 721 555666;Rheinstr. 25;76131;Karlsruhe;DE;Kunststoff;2022-09-01;78000;14 Tage;Neukunde 2022
+10007;Braun Gebäudetechnik;Michael Braun;braun@gebaeudetechnik-braun.de;+49 69 777888;Mainzer Landstr. 50;60325;Frankfurt;DE;Gebäudetechnik;2019-08-14;423000;30 Tage;
+10008;Hofmann Verpackungen GmbH;Eva Hofmann;e.hofmann@hofmann-pack.de;+49 911 999000;Nürnberger Str. 12;90402;Nürnberg;DE;Verpackung;2020-06-30;156000;21 Tage;
+10009;Wagner Präzisionsteile OHG;Ralf Wagner;r.wagner@wagner-praezision.de;+49 351 112233;Dresdner Weg 8;01067;Dresden;DE;Feinmechanik;2016-12-01;289000;30 Tage;Stammkunde seit 2016
+10010;Becker Autohaus GmbH;Sabine Becker;becker@autohaus-becker.de;+49 221 445566;Kölner Ring 33;50667;Köln;DE;Automotive/Handel;2023-02-15;45000;14 Tage;Neukunde
+10011;Schulz Industriereinigung;Jürgen Schulz;j.schulz@schulz-reinigung.de;+49 231 778899;Westfalendamm 100;44141;Dortmund;DE;Dienstleistung;2021-04-20;67000;14 Tage;
+10012;Zimmermann Holzbau GmbH;Andrea Zimmermann;a.zimmermann@zimmermann-holz.de;+49 761 223344;Schwarzwaldstr. 5;79098;Freiburg;DE;Holzbau;2018-10-10;198000;30 Tage;
+10013;Krüger Feinchemie AG;Dr. Martin Krüger;krueger@krueger-chemie.de;+49 621 556677;Chemiepark 1;68159;Mannheim;DE;Chemie;2015-07-01;890000;60 Tage;Großkunde, AVV vorhanden
+10014;Lehmann Textil GmbH;Claudia Lehmann;c.lehmann@lehmann-textil.de;+49 371 889900;Textilstr. 22;09111;Chemnitz;DE;Textil;2020-11-05;134000;30 Tage;
+10015;Maier Haustechnik;Stefan Maier;maier@haustechnik-maier.de;+49 821 334455;Augsburger Str. 18;86150;Augsburg;DE;Haustechnik;2022-03-20;89000;21 Tage;
+10001;Müller Maschinenbau GmbH;Thomas Müller;mueller@maschinenbau-mueller.de;+49 711 123456;Industriestr. 42;70173;Stuttgart;DE;Maschinenbau;2019-03-15;245000;30 Tage;DUPLIKAT - gleiche Kundennr
+10016;Müller Maschinenbau GmbH;Lisa Müller;l.mueller@maschinenbau-mueller.de;+49 711 123457;Industriestr. 42;70173;Stuttgart;DE;Maschinenbau;2024-01-10;0;30 Tage;Zweiter Ansprechpartner, gleiche Firma
+10017;;Max Mustermann;test@test.de;;;;;DE;;2024-06-01;;;Unvollständiger Datensatz
+10018;Özkan Metalltechnik GmbH;Mehmet Özkan;m.oezkan@oezkan-metall.de;+49 203 667788;Stahlstr. 9;47051;Duisburg;DE;Metallverarbeitung;2023-08-15;72000;30 Tage;Sonderzeichen im Namen
+10019;Weiß & Partner Steuerberatung;Christine Weiß;weiss@weiss-partner.de;+49 511 990011;Königstr. 45;30159;Hannover;DE;Steuerberatung;2019-06-01;156000;14 Tage;
+10020;Schröder IT-Service;Björn Schröder;b.schroeder@schroeder-it.de;+49 431 223344;Kieler Str. 77;24103;Kiel;DE;IT-Dienstleistung;2024-02-28;34000;14 Tage;Neukunde, noch kein Umsatz 2024
+10021;Großmann Baustoffe GmbH;Frank Großmann;grossmann@grossmann-bau.de;+49 345 556677;Hallesche Str. 20;06108;Halle;DE;Baustoffhandel;2021-09-15;278000;45 Tage;
+10022;Krämer Druck & Medien;Ute Krämer;u.kraemer@kraemer-druck.de;+49 261 778899;Koblenzer Str. 14;56068;Koblenz;DE;Druck/Medien;2018-04-01;145000;30 Tage;
+10023;Nüßler Feinwerktechnik;Georg Nüßler;nuessler@nuessler-feinwerk.de;+49 9131 445566;Erlanger Weg 6;91052;Erlangen;DE;Feinwerktechnik;2017-02-14;367000;30 Tage;Stammkunde
+10024;Häuser & Co. Immobilienverwaltung;Maria Häuser;haeuser@haeuser-immo.de;+49 228 112233;Bonner Str. 30;53111;Bonn;DE;Immobilien;2023-11-01;0;14 Tage;Neukunde, Vertrag in Verhandlung
