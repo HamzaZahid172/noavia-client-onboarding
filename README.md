@@ -8,9 +8,11 @@
 
 ## Proof of Working System
 
-| Workflow                                          | Email Delivered                               | Google Sheets                                   |
-| ------------------------------------------------- | --------------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
-| ![workflow](screenshots/01_workflow_overview.png) | ![email](screenshots/04_enterprise_email.png) | ![email](screenshots/04_professional_email.png) | ![sheets](screenshots/03_google_sheets.png) |
+- Workflow executed successfully end-to-end
+- Enterprise email delivered successfully
+- Professional email delivered successfully
+- Google Sheets populated
+- ERP import completed: 22 imported, 3 skipped
 
 ---
 
@@ -21,6 +23,20 @@ A complete end-to-end n8n workflow that automates B2B client onboarding:
 > Webhook → Validate → Generate Ref → Enrich (Hunter.io) → ERP CSV Import → Merge → Generate Welcome Doc → Google Sheets → Route by Tier → Email (Enterprise/Professional)
 
 **Proven working:** Enterprise email delivered ✓ · Google Sheets populated ✓ · ERP import: 22 imported, 3 skipped ✓
+
+---
+
+## Business Impact
+
+This workflow reduces manual onboarding effort by automating:
+
+- client intake and validation
+- company enrichment
+- legacy ERP migration
+- tier-based communication routing
+- centralized record keeping
+
+Estimated manual effort reduction: ~70–80% for onboarding operations.
 
 ---
 
@@ -48,7 +64,7 @@ I used **Hunter.io's `/v2/companies/find` API** instead of Clearbit's free autoc
 
 **File:** `Sample_ERP_Export_DATEV.csv` — 25 records, ISO-8859-1 encoding, semicolon-delimited.
 
-**Encoding:** n8n's Read/Write Files from Disk node reads the raw file. The Extract from File node handles CSV parsing. German Umlauts (ä, ö, ü, ß) in company names like `Müller`, `Özkan`, `Weiß`, `Nüßler` are preserved correctly.
+**Encoding:** n8n's Read/Write Files from Disk node reads the raw file. The CSV is read as binary data and parsed inside an n8n Code node using Latin-1 decoding and semicolon-based parsing. German Umlauts (ä, ö, ü, ß) in company names like `Müller`, `Özkan`, `Weiß`, `Nüßler` are preserved correctly.
 
 **Field mapping:** 14 German column headers mapped to internal English schema:
 

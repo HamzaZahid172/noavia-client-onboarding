@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "client-onboarding",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -37,8 +38,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        416,
-        0
+        640,
+        -16
       ],
       "id": "4e000093-c826-4b58-913f-6dff0e04de2d",
       "name": "Generate Client Reference"
@@ -72,7 +73,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        624,
+        832,
         0
       ],
       "id": "1dbc58b6-3d80-49bc-806e-df75fde9e373",
@@ -85,8 +86,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        832,
-        -16
+        1040,
+        0
       ],
       "id": "6e065ee7-26be-43f3-bf89-ccbd27e9c3ce",
       "name": "Normalize Enrichment"
@@ -99,7 +100,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1264,
+        1472,
         0
       ],
       "id": "d561a74f-2c74-4d2c-a243-c826c74f420b",
@@ -302,7 +303,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1456,
+        1664,
         0
       ],
       "id": "e112b721-64fe-47ac-8e4c-a8767469e9cb",
@@ -377,7 +378,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        1664,
+        1872,
         0
       ],
       "id": "d091c125-f790-48de-9312-e76def416b96",
@@ -393,8 +394,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        1920,
-        -128
+        2320,
+        -208
       ],
       "id": "72070d0d-9c94-4e99-81c4-e6beeabead30",
       "name": "Enterprise Email",
@@ -416,8 +417,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        1952,
-        224
+        2336,
+        -32
       ],
       "id": "4de369ea-256d-4253-ba1d-65b7720ae3b1",
       "name": "Professional Email",
@@ -440,26 +441,11 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1040,
+        1248,
         0
       ],
       "id": "760f2b97-eb9f-486d-a357-fbb00d2f1354",
       "name": "Merge"
-    },
-    {
-      "parameters": {
-        "options": {
-          "delimiter": ";"
-        }
-      },
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1.1,
-      "position": [
-        640,
-        304
-      ],
-      "id": "54455bd8-2379-4483-b9f0-7c222498e64c",
-      "name": "Extract from File"
     },
     {
       "parameters": {
@@ -469,8 +455,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        464,
-        304
+        656,
+        192
       ],
       "id": "cb43e1f8-2789-4800-bb3f-e67c00e3cd61",
       "name": "Read/Write Files from Disk"
@@ -482,11 +468,97 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        832,
-        304
+        1040,
+        208
       ],
       "id": "e2c3ae2d-f03c-4813-9772-fd3457ac7d5a",
       "name": "ERP CSV Import"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst BINARY_FIELD = 'data'; \nconst buf = await this.helpers.getBinaryDataBuffer(0, BINARY_FIELD);\n\n\nconst csvText = buf\n  .toString('latin1')\n  .replace(/^\\uFEFF/, '')     \n  .replace(/\\r\\n/g, '\\n') \n  .replace(/\\r/g, '\\n');\n\nconst lines = csvText.split('\\n').filter(l => l.trim() !== '');\nif (lines.length < 2) {\n  throw new Error(`CSV looks empty or has no data rows (lines=${lines.length}).`);\n}\n\nfunction parseSemicolonLine(line) {\n  const out = [];\n  let cur = '';\n  let inQuotes = false;\n\n  for (let i = 0; i < line.length; i++) {\n    const ch = line[i];\n    const next = line[i + 1];\n\n    if (ch === '\"') {\n      if (inQuotes && next === '\"') {\n        cur += '\"';\n        i++;\n      } else {\n        inQuotes = !inQuotes;\n      }\n      continue;\n    }\n\n    if (ch === ';' && !inQuotes) {\n      out.push(cur.trim());\n      cur = '';\n      continue;\n    }\n\n    cur += ch;\n  }\n\n  out.push(cur.trim());\n  return out;\n}\n\nconst headers = parseSemicolonLine(lines[0]);\nif (!headers.length) {\n  throw new Error('Header row could not be parsed.');\n}\n\nconst items = [];\n\nfor (let r = 1; r < lines.length; r++) {\n  const values = parseSemicolonLine(lines[r]);\n\n  if (values.every(v => v === '')) continue;\n\n  const row = {};\n  for (let c = 0; c < headers.length; c++) {\n    const key = headers[c] || `column_${c + 1}`;\n    row[key] = values[c] ?? '';\n  }\n\n  items.push({ json: row });\n}\n\nif (!items.length) {\n  throw new Error('No data rows were parsed from the CSV file.');\n}\n\nconsole.log(`Parsed ERP rows: ${items.length}, headers: ${headers.length}`);\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        208
+      ],
+      "id": "f71889d1-22af-4099-80f2-5f6479e53b85",
+      "name": "Parse the CSV Code",
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        560,
+        528
+      ],
+      "id": "191920d1-45ea-4f93-8076-62458e0e1228",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4340afcb-e680-4064-8f6f-af9581e4af71",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "7e2fcd79-19b1-402c-b243-dc4ece6c3b97",
+      "name": "Condition Validate User"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: true,\n  status: \"completed\",\n  client_ref: $json.client_ref,\n  company_name: $json.company_name,\n  message: \"Client onboarding workflow completed successfully\"\n} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1904,
+        400
+      ],
+      "id": "43c0d5f3-eab3-4b81-8e76-1e2456e4e468",
+      "name": "Respond to Webhook1"
     }
   ],
   "pinData": {},
@@ -498,11 +570,6 @@
             "node": "Validate & Normalize Payload",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Read/Write Files from Disk",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -511,7 +578,7 @@
       "main": [
         [
           {
-            "node": "Generate Client Reference",
+            "node": "Condition Validate User",
             "type": "main",
             "index": 0
           }
@@ -569,6 +636,11 @@
             "node": "Route by Tier",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -588,7 +660,8 @@
             "type": "main",
             "index": 0
           }
-        ]
+        ],
+        []
       ]
     },
     "Merge": {
@@ -606,18 +679,7 @@
       "main": [
         [
           {
-            "node": "Extract from File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File": {
-      "main": [
-        [
-          {
-            "node": "ERP CSV Import",
+            "node": "Parse the CSV Code",
             "type": "main",
             "index": 0
           }
@@ -634,6 +696,40 @@
           }
         ]
       ]
+    },
+    "Parse the CSV Code": {
+      "main": [
+        [
+          {
+            "node": "ERP CSV Import",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Condition Validate User": {
+      "main": [
+        [
+          {
+            "node": "Generate Client Reference",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -642,7 +738,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "e76db881-c4fe-44f2-b0da-519319a5bd7b",
+  "versionId": "1355da34-ac62-4426-bcc3-8723a88bc707",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "97432bf2e1d7c7892c36f26a6e70e340356dab15e21a8e282ea5997476067571"
