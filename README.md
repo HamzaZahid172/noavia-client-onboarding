@@ -6,6 +6,12 @@
 
 ---
 
+![n8n](https://img.shields.io/badge/n8n-automation-FF6D5A?style=flat-square)
+![Status](https://img.shields.io/badge/status-working-success?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
+
+---
+
 ## Proof of Working System
 
 - Workflow executed successfully end-to-end
@@ -131,6 +137,105 @@ curl -X POST http://localhost:5678/webhook/onboarding \
     "notes": "Priority onboarding"
   }'
 ```
+
+---
+
+## Configuration
+
+### Required API Keys
+
+1. **Hunter.io API Key**
+   - Sign up at https://hunter.io
+   - Free tier: 25 requests/month
+   - Navigate to API → API Keys
+   - Copy your API key
+
+2. **Google Sheets OAuth2**
+   - Go to Google Cloud Console
+   - Create new project or select existing
+   - Enable Google Sheets API
+   - Create OAuth 2.0 credentials
+   - Download credentials.json
+
+3. **Gmail OAuth2**
+   - Same Google Cloud project as above
+   - Enable Gmail API
+   - Use the same OAuth credentials or create separate ones
+
+### n8n Credentials Configuration
+
+1. Open n8n → Credentials → Add Credential
+2. For Hunter.io:
+   - Type: HTTP Request
+   - Authentication: Header Auth
+   - Name: `Authorization`
+   - Value: `Bearer YOUR_API_KEY`
+3. For Google Sheets & Gmail:
+   - Type: Google OAuth2 API
+   - Follow OAuth flow to authorize
+
+### Environment Variables (Optional)
+
+For production deployment, create `.env`:
+
+```env
+HUNTER_API_KEY=your_hunter_io_api_key
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+
+---
+
+## Testing the Workflow
+
+### Sample Test Payload
+
+Use this payload to test the webhook:
+
+```bash
+curl -X POST http://localhost:5678/webhook/onboarding \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_name": "Test Corporation GmbH",
+    "first_name": "Max",
+    "last_name": "Mustermann",
+    "email": "max.mustermann@testcorp.de",
+    "website": "https://testcorp.de",
+    "service_tier": "Enterprise",
+    "phone": "+49 123 456789",
+    "notes": "Priority onboarding - VIP client"
+  }'
+```
+
+### Expected Results
+
+1. **Validation Success**
+   - All fields pass regex validation
+   - Client reference generated: `NOA-2026-XXXX`
+
+2. **Hunter.io Enrichment**
+   - Company data retrieved (industry, size, location)
+   - If domain not found, defaults to "Unknown"
+
+3. **ERP CSV Import**
+   - 25 total rows → 22 imported, 3 skipped
+   - Skipped records logged with reason
+
+4. **Google Sheets**
+   - New row added with all data
+   - Status: "completed"
+
+5. **Email Sent**
+   - For Enterprise tier: Full details to manager@noavia.de
+   - For Professional tier: Brief summary to team@noavia.de
+   - For Basic tier: No email (DB only)
+
+### Verifying Results
+
+1. Check n8n execution log for success
+2. Open Google Sheet to verify data entry
+3. Check email inbox for notification
+4. Open `dashboard.html` in browser to see live dashboard
 
 ---
 
