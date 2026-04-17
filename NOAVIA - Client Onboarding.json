@@ -46,13 +46,21 @@
     },
     {
       "parameters": {
-        "url": "=https://api.hunter.io/v2/companies/find",
+        "url": "=https://api.hunter.io/v2/email-finder",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "domain",
-              "value": "={{$json.website.replace(\"https://\",\"\")}}"
+              "value": "={{$json.website.replace('https://','').replace('http://','').replace('www.','').replace(/\\/$/, '')}}"
+            },
+            {
+              "name": "first_name",
+              "value": "={{$json.contact_first_name}}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{$json.contact_last_name}}"
             },
             {
               "name": "api_key",
@@ -60,15 +68,7 @@
             }
           ]
         },
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true,
-              "neverError": true,
-              "responseFormat": "json"
-            }
-          }
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
@@ -386,52 +386,6 @@
     },
     {
       "parameters": {
-        "sendTo": "minhajcorporation5@gmail.com",
-        "subject": "=New {{$json.service_tier}} Client Onboarding | {{$json.company_name}} | {{$json.client_ref}}",
-        "message": "=<h2>New Client Onboarding Completed</h2>\n\n<p><strong>Reference:</strong> {{$json.client_ref}}</p>\n<p><strong>Company:</strong> {{$json.company_name}}</p>\n<p><strong>Contact:</strong> {{$json.contact_full_name}}</p>\n<p><strong>Email:</strong> {{$json.email}}</p>\n<p><strong>Phone:</strong> {{$json.phone}}</p>\n<p><strong>Website:</strong> {{$json.website}}</p>\n<p><strong>Tier:</strong> {{$json.service_tier}}</p>\n<p><strong>Industry:</strong> {{$json.industry}}</p>\n<p><strong>Company Size:</strong> {{$json.company_size}}</p>\n<p><strong>Location:</strong> {{$json.location}}</p>\n<p><strong>Onboarding Date:</strong> {{$json.onboarding_date}}</p>\n\n<p><strong>Notes:</strong></p>\n<p>{{$json.notes}}</p>\n\n<hr>\n\n<p>\nThis email was generated automatically by the NOAVIA Client Onboarding workflow.\n</p>",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        2320,
-        -208
-      ],
-      "id": "72070d0d-9c94-4e99-81c4-e6beeabead30",
-      "name": "Enterprise Email",
-      "webhookId": "9ae13c37-f8b9-47d2-a075-adf082f82cf6",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "CG6DZDKpmDYFQ2YF",
-          "name": "Gmail account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sendTo": "minhajcorporation5@gmail.com",
-        "subject": "=New {{$json.service_tier}} Client Onboarding | {{$json.company_name}} | {{$json.client_ref}}",
-        "message": "=<h2>New Client Onboarding Completed</h2>\n\n<p><strong>Reference:</strong> {{$json.client_ref}}</p>\n<p><strong>Company:</strong> {{$json.company_name}}</p>\n<p><strong>Contact:</strong> {{$json.contact_full_name}}</p>\n<p><strong>Email:</strong> {{$json.email}}</p>\n<p><strong>Phone:</strong> {{$json.phone}}</p>\n<p><strong>Website:</strong> {{$json.website}}</p>\n<p><strong>Tier:</strong> {{$json.service_tier}}</p>\n<p><strong>Industry:</strong> {{$json.industry}}</p>\n<p><strong>Company Size:</strong> {{$json.company_size}}</p>\n<p><strong>Location:</strong> {{$json.location}}</p>\n<p><strong>Onboarding Date:</strong> {{$json.onboarding_date}}</p>\n\n<p><strong>Notes:</strong></p>\n<p>{{$json.notes}}</p>\n\n<hr>\n\n<p>\nThis email was generated automatically by the NOAVIA Client Onboarding workflow.\n</p>",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        2336,
-        -32
-      ],
-      "id": "4de369ea-256d-4253-ba1d-65b7720ae3b1",
-      "name": "Professional Email",
-      "webhookId": "b5cc5b46-623c-4280-b545-827346fb521d",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "CG6DZDKpmDYFQ2YF",
-          "name": "Gmail account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "mode": "combine",
         "combineBy": "combineByPosition",
         "options": {
@@ -501,8 +455,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        560,
-        528
+        688,
+        496
       ],
       "id": "191920d1-45ea-4f93-8076-62458e0e1228",
       "name": "Respond to Webhook"
@@ -559,6 +513,29 @@
       ],
       "id": "43c0d5f3-eab3-4b81-8e76-1e2456e4e468",
       "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "sendTo": "minhajcorporation5@gmail.com",
+        "subject": "=New {{$json.service_tier}} Client Onboarding | {{$json.company_name}} | {{$json.client_ref}}",
+        "message": "=<h2>New Client Onboarding Completed</h2>\n\n<p><strong>Reference:</strong> {{$json.client_ref}}</p>\n<p><strong>Company:</strong> {{$json.company_name}}</p>\n<p><strong>Contact:</strong> {{$json.contact_full_name}}</p>\n<p><strong>Email:</strong> {{$json.email}}</p>\n<p><strong>Phone:</strong> {{$json.phone}}</p>\n<p><strong>Website:</strong> {{$json.website}}</p>\n<p><strong>Tier:</strong> {{$json.service_tier}}</p>\n<p><strong>Industry:</strong> {{$json.industry}}</p>\n<p><strong>Company Size:</strong> {{$json.company_size}}</p>\n<p><strong>Location:</strong> {{$json.location}}</p>\n<p><strong>Onboarding Date:</strong> {{$json.onboarding_date}}</p>\n\n<p><strong>Notes:</strong></p>\n<p>{{$json.notes}}</p>\n\n<hr>\n\n<p>\nThis email was generated automatically by the NOAVIA Client Onboarding workflow.\n</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        48
+      ],
+      "id": "4de369ea-256d-4253-ba1d-65b7720ae3b1",
+      "name": "Enterprise / Professional Email",
+      "webhookId": "b5cc5b46-623c-4280-b545-827346fb521d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CG6DZDKpmDYFQ2YF",
+          "name": "Gmail account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -649,14 +626,14 @@
       "main": [
         [
           {
-            "node": "Enterprise Email",
+            "node": "Enterprise / Professional Email",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Professional Email",
+            "node": "Enterprise / Professional Email",
             "type": "main",
             "index": 0
           }
@@ -738,7 +715,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "1355da34-ac62-4426-bcc3-8723a88bc707",
+  "versionId": "b43de54a-dff5-46c3-b697-a00e685e3111",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "97432bf2e1d7c7892c36f26a6e70e340356dab15e21a8e282ea5997476067571"
